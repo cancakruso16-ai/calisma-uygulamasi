@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nuşin'in Çalışma Uygulaması</title>
+    <title>Çalışma Uygulaması</title>
     <link rel="manifest" href="manifest.json">
     <style>
         body {
@@ -16,7 +16,7 @@
             text-align: center;
         }
         h1 { color: #2c3e50; }
-        .screen { display: none; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .screen { display: none; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; }
         .screen.active { display: block; }
         button, select, input {
             padding: 10px 15px; margin: 10px 5px; border-radius: 5px; font-size: 16px;
@@ -42,21 +42,21 @@
         }
         .answer-card { background: #d4efdf; display: none; }
         .badge {
-            display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 12px; margin-bottom: 10px; margin-right: 5px; color: white;
+            display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 12px; margin-bottom: 10px; margin-right: 5px; color: white; background: #8e44ad;
         }
-        .badge-lesson { background: #8e44ad; }
-        .badge-topic { background: #e67e22; }
         
         .delete-list { text-align: left; list-style: none; padding: 0; }
         .delete-list li {
             background: #f9f9f9; padding: 10px; margin-bottom: 10px; border-radius: 5px;
-            display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; flex-wrap: wrap;
+            display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; flex-wrap: wrap; gap: 10px;
         }
         .controls { display: flex; justify-content: space-between; margin-top: 20px; }
         .status { margin-bottom: 15px; font-weight: bold; color: #7f8c8d; }
         
         .filter-group { display: flex; flex-direction: column; align-items: stretch; gap: 5px; margin-bottom: 15px; }
         .filter-group label { text-align: left; font-weight: bold; font-size: 14px; color: #555; }
+        
+        .backup-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
     </style>
 </head>
 <body>
@@ -64,7 +64,8 @@
     <h1>Çalışma Uygulaması</h1>
 
     <div id="home-screen" class="screen active">
-	<div style="float: right; color: #ff8c00; font-weight: bold; font-size: 15px; margin-top: -10px;">
+        
+        <div style="float: right; color: #ff8c00; font-weight: bold; font-size: 15px; margin-top: -10px;">
             🧡 Seni çok seviyorum 🧡
         </div>
 
@@ -73,14 +74,8 @@
         <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
             <div class="filter-group">
                 <label for="lesson-select">Ders Seçimi:</label>
-                <select id="lesson-select" onchange="updateTopicSelect()">
+                <select id="lesson-select">
                     <option value="all">Tüm Dersler</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label for="topic-select">Konu Seçimi:</label>
-                <select id="topic-select">
-                    <option value="all">Tüm Konular</option>
                 </select>
             </div>
             <button onclick="startTest()" style="width: 100%;">Soru Çöz</button>
@@ -88,17 +83,24 @@
 
         <button onclick="showScreen('add-screen')">Soru Ekle</button>
         <button onclick="showDeleteScreen()">Soru Sil</button>
+        
         <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-        <button class="btn-export" onclick="exportQuestions()">Yedekle (Dışa Aktar)</button>
+        
+        <div class="backup-controls">
+            <button class="btn-export" onclick="exportQuestions()">Yedekle (Dışa Aktar)</button>
+            <button class="btn-secondary" onclick="document.getElementById('file-upload').click()">Yedeği Yükle (İçe Aktar)</button>
+            <input type="file" id="file-upload" accept=".json" style="display:none;" onchange="importQuestions(event)">
+        </div>
+
         <div style="text-align: left; color: #ff8c00; font-style: italic; font-size: 14px; margin-top: 15px;">
             Her zaman yanındayım
         </div>
+        
     </div>
 
     <div id="add-screen" class="screen">
         <h2>Yeni Soru Ekle</h2>
-        <input type="text" id="new-lesson" placeholder="Ders (Örn: Tarih, Türkçe, Mevzuat vs.)">
-        <input type="text" id="new-topic" placeholder="Konu (Örn: Ovalar, Osmanlı, vs.)">
+        <input type="text" id="new-lesson" placeholder="Ders (Örn: Veritabanı Sistemleri, Tarih vs.)">
         <textarea id="new-question" placeholder="Soruyu buraya yaz..."></textarea>
         <textarea id="new-answer" placeholder="Cevabı buraya yaz..."></textarea>
         <br>
@@ -111,10 +113,7 @@
         <div class="status" id="test-status">Soru: 0 / 0</div>
         
         <div class="question-card">
-            <div>
-                <span class="badge badge-lesson" id="display-lesson">Ders</span>
-                <span class="badge badge-topic" id="display-topic">Konu</span>
-            </div>
+            <div><span class="badge" id="display-lesson">Ders</span></div>
             <div id="display-question" style="margin-top: 10px;">Soru metni burada görünecek.</div>
         </div>
         
@@ -136,23 +135,20 @@
     </div>
 
     <script>
-        // Veri Kurtarma (Eski tarih uygulamasından verileri yeni yapıya taşıma)
-        let oldTarihData = localStorage.getItem('tarihSorulari');
-        if (oldTarihData && !localStorage.getItem('calismaSorulari')) {
-            let parsedOld = JSON.parse(oldTarihData);
-            let migratedData = parsedOld.map(q => ({
-                id: q.id, lesson: 'Tarih', topic: q.c || 'Genel', q: q.q, a: q.a
-            }));
-            localStorage.setItem('calismaSorulari', JSON.stringify(migratedData));
-            localStorage.removeItem('tarihSorulari'); // Eski veriyi temizle
-        }
-
         // Ana Veriyi Çek
         let questions = JSON.parse(localStorage.getItem('calismaSorulari')) || [];
+        
+        // Eğer eski verilerde konu (topic) özelliği varsa, onu yoksayarak veriyi temizliyoruz
+        questions = questions.map(q => ({
+            id: q.id,
+            lesson: q.lesson || q.c || 'Genel Ders',
+            q: q.q,
+            a: q.a
+        }));
+        
         let testQueue = [];
         let currentIndex = 0;
 
-        // Başlangıçta filtreleri güncelle
         updateLessonSelect();
 
         function saveQuestions() {
@@ -166,7 +162,6 @@
             if(screenId === 'delete-screen') showDeleteScreen();
         }
 
-        // --- DERS VE KONU FİLTRELERİNİ GÜNCELLEME ---
         function updateLessonSelect() {
             const select = document.getElementById('lesson-select');
             const currentSelection = select.value;
@@ -181,31 +176,10 @@
             });
             
             if (lessons.includes(currentSelection)) select.value = currentSelection;
-            updateTopicSelect();
-        }
-
-        function updateTopicSelect() {
-            const lessonSelect = document.getElementById('lesson-select').value;
-            const topicSelect = document.getElementById('topic-select');
-            topicSelect.innerHTML = '<option value="all">Tüm Konular</option>';
-            
-            let filteredQuestions = questions;
-            if (lessonSelect !== 'all') {
-                filteredQuestions = questions.filter(q => q.lesson === lessonSelect);
-            }
-            
-            const topics = [...new Set(filteredQuestions.map(q => q.topic))].filter(t => t);
-            topics.forEach(topic => {
-                const option = document.createElement('option');
-                option.value = topic;
-                option.innerText = topic;
-                topicSelect.appendChild(option);
-            });
         }
 
         function addQuestion() {
             const lInput = document.getElementById('new-lesson');
-            const tInput = document.getElementById('new-topic');
             const qInput = document.getElementById('new-question');
             const aInput = document.getElementById('new-answer');
             
@@ -217,7 +191,6 @@
             questions.push({
                 id: Date.now(),
                 lesson: lInput.value.trim() || 'Genel Ders',
-                topic: tInput.value.trim() || 'Genel Konu',
                 q: qInput.value.trim(),
                 a: aInput.value.trim()
             });
@@ -226,7 +199,6 @@
             alert('Soru başarıyla eklendi!');
             qInput.value = '';
             aInput.value = '';
-            // Ders ve Konu inputlarını silmiyoruz ki art arda aynı derse soru eklemek kolay olsun
         }
 
         function shuffleArray(array) {
@@ -245,19 +217,14 @@
             }
 
             const selectedLesson = document.getElementById('lesson-select').value;
-            const selectedTopic = document.getElementById('topic-select').value;
-            
             let filteredQuestions = questions;
             
             if (selectedLesson !== 'all') {
                 filteredQuestions = filteredQuestions.filter(q => q.lesson === selectedLesson);
             }
-            if (selectedTopic !== 'all') {
-                filteredQuestions = filteredQuestions.filter(q => q.topic === selectedTopic);
-            }
 
             if (filteredQuestions.length === 0) {
-                alert('Seçtiğin kriterlere uygun soru bulunamadı!');
+                alert('Seçtiğin derse uygun soru bulunamadı!');
                 return;
             }
 
@@ -270,7 +237,6 @@
         function renderTest() {
             const currentQ = testQueue[currentIndex];
             document.getElementById('display-lesson').innerText = currentQ.lesson || 'Ders';
-            document.getElementById('display-topic').innerText = currentQ.topic || 'Konu';
             document.getElementById('display-question').innerText = currentQ.q;
             document.getElementById('display-answer').innerText = currentQ.a;
             
@@ -317,20 +283,16 @@
             if(questions.length === 0) {
                 listElement.innerHTML = '<p>Henüz eklenmiş soru yok.</p>';
             } else {
-                // Listeyi son eklenenden ilk eklenene doğru sırala (daha kolay bulmak için)
                 let reversedQuestions = [...questions].reverse();
                 reversedQuestions.forEach(item => {
                     const li = document.createElement('li');
                     const shortQ = item.q.length > 35 ? item.q.substring(0, 35) + '...' : item.q;
                     li.innerHTML = `
                         <div style="flex-grow: 1; display:flex; flex-direction:column; gap:5px;">
-                            <div>
-                                <span class="badge badge-lesson" style="font-size: 10px;">${item.lesson}</span>
-                                <span class="badge badge-topic" style="font-size: 10px;">${item.topic}</span>
-                            </div>
+                            <div><span class="badge" style="font-size: 10px;">${item.lesson}</span></div>
                             <span>${shortQ}</span>
                         </div>
-                        <button class="btn-danger" style="padding: 5px 10px; font-size: 14px; height: 100%;" onclick="deleteQuestion(${item.id})">Sil</button>
+                        <button class="btn-danger" style="padding: 5px 10px; font-size: 14px;" onclick="deleteQuestion(${item.id})">Sil</button>
                     `;
                     listElement.appendChild(li);
                 });
@@ -339,7 +301,8 @@
 
         function deleteQuestion(id) {
             if(confirm('Bu soruyu silmek istediğine emin misin?')) {
-                questions = questions.filter(q => q.id !== id);
+                // Number(id) kullanarak eşleşme hatasını giderdik
+                questions = questions.filter(q => q.id !== Number(id));
                 saveQuestions();
                 showDeleteScreen(); 
             }
@@ -358,15 +321,47 @@
             downloadAnchorNode.click();
             downloadAnchorNode.remove();
         }
+
+        // YENİ: İçe Aktarma Fonksiyonu
+        function importQuestions(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (Array.isArray(importedData)) {
+                        // Yeni gelen soruları mevcut sorulara ekle, çakışmayı önlemek için ID'leri yenile
+                        const newData = importedData.map(q => ({
+                            id: Date.now() + Math.floor(Math.random() * 10000), 
+                            lesson: q.lesson || q.c || 'Genel Ders',
+                            q: q.q,
+                            a: q.a
+                        }));
+                        
+                        questions = questions.concat(newData);
+                        saveQuestions();
+                        alert('Sorular başarıyla yüklendi!');
+                    } else {
+                        alert('Geçersiz dosya formatı. Lütfen doğru yedeği seçtiğinden emin ol.');
+                    }
+                } catch (error) {
+                    alert('Dosya okunurken bir hata oluştu.');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = ''; // Aynı dosyayı tekrar seçebilmek için inputu temizle
+        }
+
+        // PWA Service Worker Kaydı
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker başarıyla kaydedildi.', reg))
+                    .catch(err => console.log('Service Worker hatası:', err));
+            });
+        }
     </script>
-    <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then(reg => console.log('Service Worker başarıyla kaydedildi.', reg))
-        .catch(err => console.log('Service Worker hatası:', err));
-    });
-  }
-</script>
 </body>
 </html>
